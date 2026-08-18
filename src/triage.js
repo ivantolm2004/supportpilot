@@ -1,0 +1,12 @@
+const RULES=[
+  {category:'payment',label:'Оплата',terms:['оплат','списал','возврат денег','карта','payment'],weight:3},
+  {category:'bug',label:'Ошибка',terms:['ошибка','не работает','сломал','пустой файл','error'],weight:2},
+  {category:'delivery',label:'Доставка',terms:['достав','курьер','посылк','заказ не пришел'],weight:2},
+  {category:'account',label:'Аккаунт',terms:['войти','парол','аккаунт','доступ'],weight:2},
+  {category:'pricing',label:'Тарифы',terms:['тариф','цена','стоимость','подписк'],weight:1}
+];
+const URGENT=['дважды','срочно','блокирует','не могу работать','потерял деньги','critical'];
+export function classifyTicket(text){const normalized=String(text).toLowerCase().replace(/ё/g,'е');let best={category:'other',label:'Другое',score:0,matches:[]};for(const rule of RULES){const matches=rule.terms.filter(term=>normalized.includes(term));const score=matches.length*rule.weight;if(score>best.score)best={category:rule.category,label:rule.label,score,matches}}const urgentMatches=URGENT.filter(term=>normalized.includes(term));const priority=urgentMatches.length||best.score>=6?'high':best.score>=2?'normal':'low';return{...best,priority,urgentMatches,confidence:Math.min(.98,.35+best.score*.1+urgentMatches.length*.2)}}
+export function slaFor(priority,createdAt=new Date()){const minutes={high:30,normal:240,low:1440}[priority]??240;return{minutes,dueAt:new Date(new Date(createdAt).getTime()+minutes*60_000).toISOString()}}
+export function draftReply(ticket,classification){const name=String(ticket.customer||'Клиент').trim();const templates={payment:`${name}, здравствуйте! Проверяем платёж и историю операций. Вернёмся с результатом в пределах SLA.`,bug:`${name}, здравствуйте! Зафиксировали ошибку и передали технической команде. Пожалуйста, сохраните время возникновения проблемы.`,delivery:`${name}, здравствуйте! Проверяем статус заказа и маршрут доставки. Сообщим обновление в пределах SLA.`,account:`${name}, здравствуйте! Поможем восстановить доступ. Не отправляйте пароль или коды подтверждения в ответном сообщении.`,pricing:`${name}, здравствуйте! Уточняем условия тарифа и подготовим подходящий вариант.`,other:`${name}, здравствуйте! Получили обращение и уточняем детали.`};return templates[classification.category]}
+export function triage(ticket,now=new Date()){const classification=classifyTicket(ticket.message);return{...ticket,classification,sla:slaFor(classification.priority,now),draft:draftReply(ticket,classification)}}

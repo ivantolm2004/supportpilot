@@ -1,0 +1,1 @@
+{"name":"supportpilot","version":"1.0.0","private":true,"description":"Explainable support-ticket classifier and SLA engine","type":"module","scripts":{"test":"node --test"},"engines":{"node":">=20"}}
